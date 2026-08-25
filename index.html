@@ -321,19 +321,19 @@
   </div>
 
   <script>
-    // ⚠️ CONFIGURA AQUÍ TUS CLAVES DE FIREBASE
+    // ⚠️ CONFIGURACIÓN DE FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg",
-  authDomain: "bogota-bts-trip.firebaseapp.com",
-  projectId: "bogota-bts-trip",
-  storageBucket: "bogota-bts-trip.firebasestorage.app",
-  messagingSenderId: "180293297181",
-  appId: "1:180293297181:web:2e02eea579b3d0e1f3d2f4",
-  measurementId: "G-EPMPC7PN81"
+      authDomain: "bogota-bts-trip.firebaseapp.com",
+      projectId: "bogota-bts-trip",
+      storageBucket: "bogota-bts-trip.firebasestorage.app",
+      messagingSenderId: "180293297181",
+      appId: "1:180293297181:web:2e02eea579b3d0e1f3d2f4",
+      measurementId: "G-EPMPC7PN81"
     };
 
     // Configuración inicial de Leaflet Map
-    const map = L.map('map').setView([4.628, -74.143], 12); // Centrado por defecto en Kennedy, Bogotá
+    const map = L.map('map').setView([4.628, -74.143], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -343,18 +343,26 @@
 
     // Inicializar Firebase
     let db = null;
+    let isFirebaseActive = false;
+
     try {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
+      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY") {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        isFirebaseActive = true;
+      }
     } catch(e) {
-      console.warn("Firebase no configurado, se utilizará LocalStorage");
+      console.warn("Error al inicializar Firebase, usando LocalStorage:", e);
     }
 
     const EXCHANGE_RATE = 66.6;
     const TOTAL_BUDGET_DOP = 30000;
 
     // Cargar Actividades (Firebase o LocalStorage)
-    if (db && firebaseConfig.apiKey !== "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg") {
+    if (isFirebaseActive && db) {
+      document.getElementById('syncStatus').innerText = '🟢 Conectado con Firebase & Mapa en Vivo';
+      document.getElementById('syncStatus').style.color = 'var(--success)';
+
       db.collection("itinerary").onSnapshot((snapshot) => {
         const activities = [];
         snapshot.forEach((doc) => {
@@ -397,7 +405,6 @@
       const container = document.getElementById('itineraryList');
       container.innerHTML = '';
       
-      // Limpiar marcadores del mapa
       markers.forEach(m => map.removeLayer(m));
       markers = [];
 
@@ -408,7 +415,6 @@
         if (!grouped[act.date]) grouped[act.date] = [];
         grouped[act.date].push(act);
 
-        // Añadir marcador al mapa si tiene coordenadas
         if (act.lat && act.lng) {
           const marker = L.marker([act.lat, act.lng])
             .addTo(map)
@@ -447,7 +453,6 @@
         container.appendChild(dayDiv);
       }
 
-      // Actualizar Presupuesto
       const remaining = TOTAL_BUDGET_DOP - totalSpent;
       document.getElementById('spentBudget').innerText = `${totalSpent.toLocaleString()} DOP`;
       document.getElementById('spentCOP').innerText = `~${Math.round(totalSpent * EXCHANGE_RATE).toLocaleString()} COP`;
@@ -455,12 +460,10 @@
       document.getElementById('remainingCOP').innerText = `~${Math.round(remaining * EXCHANGE_RATE).toLocaleString()} COP`;
     }
 
-    // Centrar mapa en ubicación específica
     function focusOnMap(lat, lng, name) {
       map.flyTo([lat, lng], 15, { duration: 1.5 });
     }
 
-    // Modal de Edición
     function openEditModal(id) {
       const act = currentActivities.find(a => a.id === id);
       if (!act) return;
@@ -479,7 +482,6 @@
       document.getElementById('editModal').style.display = 'none';
     }
 
-    // Guardar Edición
     document.getElementById('editForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = document.getElementById('editId').value;
@@ -493,7 +495,7 @@
         lng: parseFloat(document.getElementById('editLng').value) || -74.143
       };
 
-      if (db && firebaseConfig.apiKey !== "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg") {
+      if (isFirebaseActive && db) {
         await db.collection("itinerary").doc(id).update(updated);
       } else {
         const index = currentActivities.findIndex(a => a.id === id);
@@ -506,7 +508,6 @@
       closeEditModal();
     });
 
-    // Agregar Nueva Actividad
     document.getElementById('activityForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const newAct = {
@@ -519,7 +520,7 @@
         lng: parseFloat(document.getElementById('actLng').value) || -74.143
       };
 
-      if (db && firebaseConfig.apiKey !== "TAIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg") {
+      if (isFirebaseActive && db) {
         await db.collection("itinerary").add(newAct);
       } else {
         newAct.id = Date.now().toString();
@@ -530,9 +531,8 @@
       document.getElementById('activityForm').reset();
     });
 
-    // Eliminar Actividad
     async function deleteActivity(id) {
-      if (db && firebaseConfig.apiKey !== "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg") {
+      if (isFirebaseActive && db) {
         await db.collection("itinerary").doc(id).delete();
       } else {
         currentActivities = currentActivities.filter(a => a.id !== id);
@@ -541,7 +541,6 @@
       }
     }
 
-    // Cargar itinerario base inicial en Firebase
     async function seedInitialData() {
       localStorage.setItem('initialized', 'true');
       const defaults = [
