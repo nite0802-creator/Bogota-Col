@@ -3,9 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Itinerario Bogotá 2026 - BTS Tour</title>
+  <title>Itinerario Bogotá 2026 - BTS Tour & Exploración</title>
   
-  <!-- Carga de Firebase SDK -->
+  <!-- Leaflet CSS for Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
@@ -13,183 +18,310 @@
     :root {
       --primary: #6c5ce7;
       --secondary: #a29bfe;
+      --accent: #fd79a8;
       --bg: #f8f9fa;
       --text: #2d3436;
       --card: #ffffff;
       --border: #dfe6e9;
+      --success: #00b894;
+      --danger: #d63031;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding: 20px; }
+    body { background-color: var(--bg); color: var(--text); padding: 15px; }
 
-    header { text-align: center; margin-bottom: 20px; }
-    h1 { color: var(--primary); margin-bottom: 5px; }
+    header { text-align: center; margin-bottom: 15px; }
+    header h1 { color: var(--primary); font-size: 1.8rem; margin-bottom: 5px; }
+    header p { color: #636e72; font-size: 0.95rem; }
 
     .status-badge {
       text-align: center;
       margin-bottom: 15px;
       font-size: 0.85rem;
-      color: #00b894;
+      color: var(--success);
       font-weight: bold;
     }
 
+    /* Budget Tracker Header */
     .budget-tracker {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
     }
 
     .budget-card {
       background: var(--card);
-      padding: 15px;
+      padding: 14px;
       border-radius: 10px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.05);
       border-left: 5px solid var(--primary);
     }
 
-    .budget-card.remaining { border-left-color: #00b894; }
-    .budget-card.spent { border-left-color: #d63031; }
+    .budget-card.remaining { border-left-color: var(--success); }
+    .budget-card.spent { border-left-color: var(--danger); }
 
-    .budget-value { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+    .budget-title { font-size: 0.85rem; color: #636e72; font-weight: 600; text-transform: uppercase; }
+    .budget-value { font-size: 1.3rem; font-weight: bold; margin-top: 4px; }
+    .budget-card small { color: #888; font-size: 0.8rem; }
 
+    /* Layout Grid */
     .main-layout {
       display: grid;
-      grid-template-columns: 1fr 350px;
+      grid-template-columns: 1fr 360px;
       gap: 20px;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 992px) {
       .main-layout { grid-template-columns: 1fr; }
     }
 
-    .itinerary-section, .form-section {
+    .itinerary-section, .side-section {
       background: var(--card);
-      padding: 20px;
+      padding: 18px;
       border-radius: 12px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
     }
 
-    .day-group { margin-bottom: 20px; }
-    .day-header { 
-      background: var(--secondary); 
-      color: white; 
-      padding: 8px 12px; 
-      border-radius: 6px; 
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-
-    .activity-item {
+    .section-title {
+      font-size: 1.2rem;
+      color: var(--primary);
+      margin-bottom: 15px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      margin-bottom: 8px;
-      background: #fff;
     }
 
-    .activity-info h4 { margin-bottom: 3px; }
-    .activity-info p { font-size: 0.85rem; color: #636e72; }
-    .activity-cost { font-weight: bold; color: var(--primary); }
-
-    .btn-delete {
-      background: #ff7675;
-      color: white;
-      border: none;
-      padding: 5px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-left: 10px;
-    }
-
-    form label { display: block; margin-top: 10px; font-weight: 600; font-size: 0.9rem; }
-    form input {
+    /* Map Box */
+    #map {
+      height: 320px;
       width: 100%;
-      padding: 10px;
-      margin-top: 5px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 15px;
+    }
+
+    /* Form Styles */
+    form label { display: block; margin-top: 10px; font-weight: 600; font-size: 0.85rem; }
+    form input, form select {
+      width: 100%;
+      padding: 9px;
+      margin-top: 4px;
       border: 1px solid var(--border);
       border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 0.85rem;
     }
 
     .btn-submit {
       width: 100%;
       background: var(--primary);
       color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 6px;
       margin-top: 15px;
-      font-weight: bold;
-      cursor: pointer;
     }
-    
+
     .btn-submit:hover { background: #5b4bc4; }
+
+    .btn-cancel {
+      background: #b2bec3;
+      color: white;
+      margin-left: 5px;
+    }
+
+    /* Itinerary List */
+    .day-group { margin-bottom: 18px; }
+    .day-header { 
+      background: var(--secondary); 
+      color: white; 
+      padding: 7px 12px; 
+      border-radius: 6px; 
+      margin-bottom: 10px;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+
+    .activity-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+
+    .activity-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .activity-info h4 { font-size: 1rem; color: #2d3436; margin-bottom: 3px; }
+    .activity-info p { font-size: 0.85rem; color: #636e72; }
+
+    .activity-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-map { background: #74b9ff; color: white; padding: 4px 8px; font-size: 0.75rem; }
+    .btn-edit { background: #ffeaa7; color: #d63031; padding: 4px 8px; font-size: 0.75rem; }
+    .btn-delete { background: #ff7675; color: white; padding: 4px 8px; font-size: 0.75rem; }
+
+    .activity-cost { font-weight: bold; color: var(--primary); font-size: 0.95rem; }
+
+    /* Modal for Editing */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 450px;
+    }
   </style>
 </head>
 <body>
 
   <header>
     <h1>Bogotá 2026: BTS & Exploración</h1>
-    <p>Itinerario Colaborativo | 28 Sep - 07 Oct</p>
+    <p>Itinerario Interactivo y Colaborativo | 28 Sep - 07 Oct</p>
   </header>
 
-  <div class="status-badge" id="syncStatus">🟢 Conectado en tiempo real con Firebase</div>
+  <div class="status-badge" id="syncStatus">🟢 Conectado con Firebase & Mapa en Vivo</div>
 
   <!-- Presupuesto -->
   <div class="budget-tracker">
     <div class="budget-card">
-      <div>Presupuesto Total</div>
+      <div class="budget-title">Presupuesto Total</div>
       <div class="budget-value">30,000 DOP</div>
       <small>~2,000,000 COP</small>
     </div>
     <div class="budget-card spent">
-      <div>Gastado Estimado</div>
+      <div class="budget-title">Gastado Estimado</div>
       <div class="budget-value" id="spentBudget">0 DOP</div>
       <small id="spentCOP">0 COP</small>
     </div>
     <div class="budget-card remaining">
-      <div>Restante</div>
+      <div class="budget-title">Restante</div>
       <div class="budget-value" id="remainingBudget">30,000 DOP</div>
       <small id="remainingCOP">~2,000,000 COP</small>
     </div>
   </div>
 
   <div class="main-layout">
-    <!-- Lista -->
+    <!-- Columna Izquierda: Lista de Actividades -->
     <div class="itinerary-section">
-      <h2>Itinerario de Actividades</h2>
-      <div id="itineraryList" style="margin-top: 15px;">Cargando actividades...</div>
+      <div class="section-title">
+        <span>📋 Itinerario por Días</span>
+      </div>
+      <div id="itineraryList">Cargando actividades...</div>
     </div>
 
-    <!-- Formulario -->
-    <div class="form-section">
-      <h3>Añadir Actividad</h3>
-      <form id="activityForm">
-        <label for="actName">Nombre de la actividad</label>
-        <input type="text" id="actName" required placeholder="Ej: Almuerzo corrientazo">
+    <!-- Columna Derecha: Mapa + Formulario -->
+    <div>
+      <!-- Mapa -->
+      <div class="side-section">
+        <div class="section-title">
+          <span>🗺️ Mapa de Bogotá</span>
+        </div>
+        <div id="map"></div>
+        <p style="font-size: 0.8rem; color: #636e72;">Haz clic en <b>"📍 Ver en mapa"</b> en cualquier actividad para enfocar su ubicación.</p>
+      </div>
 
-        <label for="actDate">Fecha</label>
-        <input type="date" id="actDate" min="2026-09-28" max="2026-10-07" required value="2026-09-28">
+      <!-- Formulario para agregar -->
+      <div class="side-section">
+        <div class="section-title">
+          <span>➕ Añadir Actividad</span>
+        </div>
+        <form id="activityForm">
+          <label for="actName">Nombre de la actividad</label>
+          <input type="text" id="actName" required placeholder="Ej: Almuerzo corrientazo">
 
-        <label for="actTime">Hora</label>
-        <input type="time" id="actTime" required value="12:00">
+          <label for="actDate">Fecha</label>
+          <input type="date" id="actDate" min="2026-09-28" max="2026-10-07" required value="2026-09-28">
 
-        <label for="actLocation">Ubicación / Transporte</label>
-        <input type="text" id="actLocation" placeholder="Ej: Estación TransMilenio Marsella">
+          <label for="actTime">Hora</label>
+          <input type="time" id="actTime" required value="12:00">
 
-        <label for="actCost">Costo Estimado (DOP)</label>
-        <input type="number" id="actCost" required placeholder="Costo en DOP" value="0">
+          <label for="actLocation">Nombre del Lugar / Dirección</label>
+          <input type="text" id="actLocation" required placeholder="Ej: Kennedy, La Candelaria, Movistar Arena">
 
-        <button type="submit" class="btn-submit">Guardar Actividad</button>
+          <label for="actCost">Costo Estimado (DOP)</label>
+          <input type="number" id="actCost" required placeholder="Costo en DOP" value="0">
+
+          <label for="actLat">Latitud (Opcional o aproximada)</label>
+          <input type="number" step="any" id="actLat" placeholder="Ej: 4.628" value="4.628">
+
+          <label for="actLng">Longitud (Opcional o aproximada)</label>
+          <input type="number" step="any" id="actLng" placeholder="Ej: -74.143" value="-74.143">
+
+          <button type="submit" class="btn btn-submit">Guardar Actividad</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Editar Actividad -->
+  <div class="modal" id="editModal">
+    <div class="modal-content">
+      <div class="section-title">✏️ Editar Actividad</div>
+      <form id="editForm">
+        <input type="hidden" id="editId">
+        <label>Nombre de la actividad</label>
+        <input type="text" id="editName" required>
+
+        <label>Fecha</label>
+        <input type="date" id="editDate" min="2026-09-28" max="2026-10-07" required>
+
+        <label>Hora</label>
+        <input type="time" id="editTime" required>
+
+        <label>Ubicación</label>
+        <input type="text" id="editLocation" required>
+
+        <label>Costo Estimado (DOP)</label>
+        <input type="number" id="editCost" required>
+
+        <label>Latitud</label>
+        <input type="number" step="any" id="editLat">
+
+        <label>Longitud</label>
+        <input type="number" step="any" id="editLng">
+
+        <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+          <button type="button" class="btn btn-cancel" onclick="closeEditModal()">Cancelar</button>
+          <button type="submit" class="btn btn-submit" style="margin-top:0; width:auto;">Guardar Cambios</button>
+        </div>
       </form>
     </div>
   </div>
 
   <script>
-    // ⚠️ REEMPLAZA ESTO CON TUS DATOS DE FIREBASE
+    // ⚠️ CONFIGURA AQUÍ TUS CLAVES DE FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg",
   authDomain: "bogota-bts-trip.firebaseapp.com",
@@ -200,43 +332,89 @@
   measurementId: "G-EPMPC7PN81"
     };
 
+    // Configuración inicial de Leaflet Map
+    const map = L.map('map').setView([4.628, -74.143], 12); // Centrado por defecto en Kennedy, Bogotá
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let markers = [];
+    let currentActivities = [];
+
     // Inicializar Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    let db = null;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    } catch(e) {
+      console.warn("Firebase no configurado, se utilizará LocalStorage");
+    }
 
     const EXCHANGE_RATE = 66.6;
     const TOTAL_BUDGET_DOP = 30000;
 
-    // Escuchar cambios en TIEMPO REAL desde Firebase
-    db.collection("itinerary").onSnapshot((snapshot) => {
-      const activities = [];
-      snapshot.forEach((doc) => {
-        activities.push({ id: doc.id, ...doc.data() });
+    // Cargar Actividades (Firebase o LocalStorage)
+    if (db && firebaseConfig.apiKey !== "TU_API_KEY") {
+      db.collection("itinerary").onSnapshot((snapshot) => {
+        const activities = [];
+        snapshot.forEach((doc) => {
+          activities.push({ id: doc.id, ...doc.data() });
+        });
+        if (activities.length === 0 && !localStorage.getItem('initialized')) {
+          seedInitialData();
+        } else {
+          currentActivities = activities;
+          renderItinerary(activities);
+        }
       });
-      
-      // Si la base de datos está vacía la primera vez, cargar datos iniciales
-      if (activities.length === 0 && !localStorage.getItem('initialized')) {
-        seedInitialData();
+    } else {
+      document.getElementById('syncStatus').innerText = '🟡 Modo Local (Sin clave Firebase). Edita index.html para conectar.';
+      document.getElementById('syncStatus').style.color = '#e17055';
+      loadLocalData();
+    }
+
+    function loadLocalData() {
+      const stored = localStorage.getItem('bogota_activities');
+      if (stored) {
+        currentActivities = JSON.parse(stored);
       } else {
-        renderItinerary(activities);
+        currentActivities = [
+          { id: '1', date: '2026-09-28', time: '10:00', name: 'Llegada a Kennedy & Mercado Abastecimiento', location: 'Cra 69b #12-70, Kennedy', cost: 1500, lat: 4.628, lng: -74.143 },
+          { id: '2', date: '2026-09-29', time: '14:00', name: 'Paseo La Candelaria & Plaza Bolívar', location: 'La Candelaria, Bogotá', cost: 800, lat: 4.598, lng: -74.076 },
+          { id: '3', date: '2026-10-02', time: '12:00', name: 'CONCIERTO BTS (Estadio El Campín / Arena)', location: 'Movistar Arena / El Campín', cost: 2000, lat: 4.646, lng: -74.077 },
+          { id: '4', date: '2026-10-04', time: '10:00', name: 'Subida a Monserrate', location: 'Cerro de Monserrate', cost: 900, lat: 4.605, lng: -74.055 }
+        ];
+        saveLocalData();
       }
-    }, (error) => {
-      console.error("Error al conectar con Firebase:", error);
-      document.getElementById('syncStatus').innerText = '🔴 Error de conexión';
-      document.getElementById('syncStatus').style.color = '#d63031';
-    });
+      renderItinerary(currentActivities);
+    }
+
+    function saveLocalData() {
+      localStorage.setItem('bogota_activities', JSON.stringify(currentActivities));
+    }
 
     function renderItinerary(activities) {
       const container = document.getElementById('itineraryList');
       container.innerHTML = '';
+      
+      // Limpiar marcadores del mapa
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
       const grouped = {};
-      
-      // Ordenar por fecha y hora
       activities.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-      
+
       activities.forEach(act => {
         if (!grouped[act.date]) grouped[act.date] = [];
         grouped[act.date].push(act);
+
+        // Añadir marcador al mapa si tiene coordenadas
+        if (act.lat && act.lng) {
+          const marker = L.marker([act.lat, act.lng])
+            .addTo(map)
+            .bindPopup(`<b>${act.name}</b><br>📍 ${act.location}<br>⏰ ${act.time}`);
+          markers.push(marker);
+        }
       });
 
       let totalSpent = 0;
@@ -244,20 +422,24 @@
       for (const date in grouped) {
         const dayDiv = document.createElement('div');
         dayDiv.className = 'day-group';
-        dayDiv.innerHTML = `<div class="day-header">${date}</div>`;
+        dayDiv.innerHTML = `<div class="day-header">📅 ${date}</div>`;
 
         grouped[date].forEach(act => {
           totalSpent += Number(act.cost);
           const item = document.createElement('div');
           item.className = 'activity-item';
           item.innerHTML = `
-            <div class="activity-info">
-              <h4>${act.name}</h4>
-              <p>⏰ ${act.time} | 📍 ${act.location}</p>
-            </div>
-            <div style="display:flex; align-items:center;">
+            <div class="activity-header-row">
+              <div class="activity-info">
+                <h4>${act.name}</h4>
+                <p>⏰ ${act.time} | 📍 ${act.location}</p>
+              </div>
               <span class="activity-cost">${Number(act.cost).toLocaleString()} DOP</span>
-              <button class="btn-delete" onclick="deleteActivity('${act.id}')">✕</button>
+            </div>
+            <div class="activity-actions">
+              <button class="btn btn-map" onclick="focusOnMap(${act.lat || 4.628}, ${act.lng || -74.143}, '${act.name}')">📍 Ver en mapa</button>
+              <button class="btn btn-edit" onclick="openEditModal('${act.id}')">✏️ Editar</button>
+              <button class="btn btn-delete" onclick="deleteActivity('${act.id}')">🗑️ Eliminar</button>
             </div>
           `;
           dayDiv.appendChild(item);
@@ -273,7 +455,58 @@
       document.getElementById('remainingCOP').innerText = `~${Math.round(remaining * EXCHANGE_RATE).toLocaleString()} COP`;
     }
 
-    // Agregar Actividad a Firebase
+    // Centrar mapa en ubicación específica
+    function focusOnMap(lat, lng, name) {
+      map.flyTo([lat, lng], 15, { duration: 1.5 });
+    }
+
+    // Modal de Edición
+    function openEditModal(id) {
+      const act = currentActivities.find(a => a.id === id);
+      if (!act) return;
+      document.getElementById('editId').value = act.id;
+      document.getElementById('editName').value = act.name;
+      document.getElementById('editDate').value = act.date;
+      document.getElementById('editTime').value = act.time;
+      document.getElementById('editLocation').value = act.location;
+      document.getElementById('editCost').value = act.cost;
+      document.getElementById('editLat').value = act.lat || 4.628;
+      document.getElementById('editLng').value = act.lng || -74.143;
+      document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+
+    // Guardar Edición
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editId').value;
+      const updated = {
+        name: document.getElementById('editName').value,
+        date: document.getElementById('editDate').value,
+        time: document.getElementById('editTime').value,
+        location: document.getElementById('editLocation').value,
+        cost: Number(document.getElementById('editCost').value),
+        lat: parseFloat(document.getElementById('editLat').value) || 4.628,
+        lng: parseFloat(document.getElementById('editLng').value) || -74.143
+      };
+
+      if (db && firebaseConfig.apiKey !== "TU_API_KEY") {
+        await db.collection("itinerary").doc(id).update(updated);
+      } else {
+        const index = currentActivities.findIndex(a => a.id === id);
+        if (index !== -1) {
+          currentActivities[index] = { id, ...updated };
+          saveLocalData();
+          renderItinerary(currentActivities);
+        }
+      }
+      closeEditModal();
+    });
+
+    // Agregar Nueva Actividad
     document.getElementById('activityForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const newAct = {
@@ -281,33 +514,40 @@
         date: document.getElementById('actDate').value,
         time: document.getElementById('actTime').value,
         location: document.getElementById('actLocation').value,
-        cost: Number(document.getElementById('actCost').value)
+        cost: Number(document.getElementById('actCost').value),
+        lat: parseFloat(document.getElementById('actLat').value) || 4.628,
+        lng: parseFloat(document.getElementById('actLng').value) || -74.143
       };
 
-      try {
+      if (db && firebaseConfig.apiKey !== "TU_API_KEY") {
         await db.collection("itinerary").add(newAct);
-        document.getElementById('activityForm').reset();
-      } catch (err) {
-        alert("Error al guardar en Firebase: " + err.message);
+      } else {
+        newAct.id = Date.now().toString();
+        currentActivities.push(newAct);
+        saveLocalData();
+        renderItinerary(currentActivities);
       }
+      document.getElementById('activityForm').reset();
     });
 
     // Eliminar Actividad
     async function deleteActivity(id) {
-      try {
+      if (db && firebaseConfig.apiKey !== "TU_API_KEY") {
         await db.collection("itinerary").doc(id).delete();
-      } catch (err) {
-        alert("Error al eliminar: " + err.message);
+      } else {
+        currentActivities = currentActivities.filter(a => a.id !== id);
+        saveLocalData();
+        renderItinerary(currentActivities);
       }
     }
 
-    // Cargar itinerario base la primera vez
+    // Cargar itinerario base inicial en Firebase
     async function seedInitialData() {
       localStorage.setItem('initialized', 'true');
       const defaults = [
-        { date: '2026-09-28', time: '10:00', name: 'Llegada y Mercado en D1/Éxito', location: 'Kennedy - Cra 69b', cost: 1500 },
-        { date: '2026-09-29', time: '14:00', name: 'La Candelaria y Plaza de Bolívar', location: 'Centro Histórico', cost: 800 },
-        { date: '2026-10-02', time: '12:00', name: 'CONCIERTO BTS (Salida Temprana)', location: 'Lugar del Concierto', cost: 2000 }
+        { date: '2026-09-28', time: '10:00', name: 'Llegada a Kennedy & Mercado Abastecimiento', location: 'Cra 69b #12-70, Kennedy', cost: 1500, lat: 4.628, lng: -74.143 },
+        { date: '2026-09-29', time: '14:00', name: 'Paseo La Candelaria & Plaza Bolívar', location: 'La Candelaria, Bogotá', cost: 800, lat: 4.598, lng: -74.076 },
+        { date: '2026-10-02', time: '12:00', name: 'CONCIERTO BTS (Estadio El Campín / Arena)', location: 'Movistar Arena / El Campín', cost: 2000, lat: 4.646, lng: -74.077 }
       ];
       for (const item of defaults) {
         await db.collection("itinerary").add(item);
