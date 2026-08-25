@@ -354,7 +354,7 @@
     const TOTAL_BUDGET_DOP = 30000;
 
     // Cargar Actividades (Firebase o LocalStorage)
-    if (db && firebaseConfig.apiKey !== "TU_API_KEY") {
+    if (db && firebaseConfig.apiKey !== "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg") {
       db.collection("itinerary").onSnapshot((snapshot) => {
         const activities = [];
         snapshot.forEach((doc) => {
@@ -519,7 +519,7 @@
         lng: parseFloat(document.getElementById('actLng').value) || -74.143
       };
 
-      if (db && firebaseConfig.apiKey !== "TU_API_KEY") {
+      if (db && firebaseConfig.apiKey !== "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg") {
         await db.collection("itinerary").add(newAct);
       } else {
         newAct.id = Date.now().toString();
@@ -532,7 +532,7 @@
 
     // Eliminar Actividad
     async function deleteActivity(id) {
-      if (db && firebaseConfig.apiKey !== "TU_API_KEY") {
+      if (db && firebaseConfig.apiKey !== "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg") {
         await db.collection("itinerary").doc(id).delete();
       } else {
         currentActivities = currentActivities.filter(a => a.id !== id);
