@@ -16,60 +16,91 @@
 
   <style>
     :root {
-      --primary: #6c5ce7;
-      --secondary: #a29bfe;
-      --accent: #fd79a8;
-      --bg: #f8f9fa;
-      --text: #2d3436;
-      --card: #ffffff;
-      --border: #dfe6e9;
-      --success: #00b894;
-      --danger: #d63031;
+      --primary: #e8a0bf;        /* Rosa pastel principal */
+      --primary-hover: #d88fae;  /* Rosa pastel hover */
+      --secondary: #f4c2d7;      /* Rosa pastel suave */
+      --accent: #f7d6e0;         /* Rosa pastel claro */
+      --bg: #faf7f2;             /* Blanco crema / Ivory */
+      --card: #ffffff;           /* Blanco puro para tarjetas */
+      --text-main: #4a3e3d;      /* Marrón suave para contraste cálido */
+      --text-muted: #8c7b7a;     /* Texto secundario */
+      --border: #f0e6df;         /* Borde crema suave */
+      --success: #a3c9a8;        /* Verde menta pastel */
+      --danger: #e5989b;         /* Rojo rosa pastel */
+      --shadow: 0 10px 25px -5px rgba(232, 160, 191, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding: 15px; }
+    * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+    body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.5;
+  padding: 2rem;
+}
 
-    header { text-align: center; margin-bottom: 15px; }
-    header h1 { color: var(--primary); font-size: 1.8rem; margin-bottom: 5px; }
-    header p { color: #636e72; font-size: 0.95rem; }
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { color: var(--text-main); font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+    header p { color: var(--text-muted); font-size: 0.95rem; font-weight: 500; }
 
     .status-badge {
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 24px;
       font-size: 0.85rem;
-      color: var(--success);
-      font-weight: bold;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.3px;
     }
 
     /* Budget Tracker Header */
     .budget-tracker {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      margin-bottom: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
     }
 
     .budget-card {
       background: var(--card);
-      padding: 14px;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-      border-left: 5px solid var(--primary);
+      padding: 18px 20px;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--primary);
     }
 
-    .budget-card.remaining { border-left-color: var(--success); }
-    .budget-card.spent { border-left-color: var(--danger); }
+    .budget-card.remaining { border-top-color: var(--success); }
+    .budget-card.spent { border-top-color: var(--danger); }
 
-    .budget-title { font-size: 0.85rem; color: #636e72; font-weight: 600; text-transform: uppercase; }
-    .budget-value { font-size: 1.3rem; font-weight: bold; margin-top: 4px; }
-    .budget-card small { color: #888; font-size: 0.8rem; }
+    .budget-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+    .budget-value { font-size: 1.4rem; font-weight: 700; color: var(--text-main); margin-top: 6px; }
+    .budget-card small { color: var(--text-muted); font-size: 0.8rem; display: block; margin-top: 2px; }
 
     /* Layout Grid */
     .main-layout {
       display: grid;
-      grid-template-columns: 1fr 360px;
-      gap: 20px;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
     }
 
     @media (max-width: 992px) {
@@ -78,16 +109,18 @@
 
     .itinerary-section, .side-section {
       background: var(--card);
-      padding: 18px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-      margin-bottom: 20px;
+      padding: 24px;
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
     }
 
     .section-title {
-      font-size: 1.2rem;
-      color: var(--primary);
-      margin-bottom: 15px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -97,68 +130,86 @@
     #map {
       height: 320px;
       width: 100%;
-      border-radius: 8px;
+      border-radius: 14px;
       border: 1px solid var(--border);
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
 
     /* Form Styles */
-    form label { display: block; margin-top: 10px; font-weight: 600; font-size: 0.85rem; }
+    form label { display: block; margin-top: 14px; font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
     form input, form select {
       width: 100%;
-      padding: 9px;
-      margin-top: 4px;
+      padding: 11px 14px;
+      margin-top: 6px;
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 10px;
       font-size: 0.9rem;
+      background-color: var(--bg);
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    form input:focus {
+      border-color: var(--primary);
+      background-color: #ffffff;
     }
 
     .btn {
-      padding: 10px 14px;
+      padding: 10px 16px;
       border: none;
-      border-radius: 6px;
-      font-weight: bold;
+      border-radius: 10px;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s ease;
       font-size: 0.85rem;
     }
 
     .btn-submit {
       width: 100%;
       background: var(--primary);
-      color: white;
-      margin-top: 15px;
+      color: #ffffff;
+      margin-top: 20px;
+      padding: 12px;
     }
 
-    .btn-submit:hover { background: #5b4bc4; }
+    .btn-submit:hover { background: var(--primary-hover); transform: translateY(-1px); }
 
     .btn-cancel {
-      background: #b2bec3;
-      color: white;
-      margin-left: 5px;
+      background: #e0d8d0;
+      color: var(--text-main);
+      margin-left: 8px;
     }
 
+    .btn-cancel:hover { background: #d0c8c0; }
+
     /* Itinerary List */
-    .day-group { margin-bottom: 18px; }
+    .day-group { margin-bottom: 24px; }
     .day-header { 
-      background: var(--secondary); 
-      color: white; 
-      padding: 7px 12px; 
-      border-radius: 6px; 
-      margin-bottom: 10px;
-      font-weight: bold;
-      font-size: 0.95rem;
+      background: var(--accent); 
+      color: var(--text-main); 
+      padding: 8px 16px; 
+      border-radius: 10px; 
+      margin-bottom: 12px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      letter-spacing: 0.3px;
     }
 
     .activity-item {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding: 12px;
+      gap: 10px;
+      padding: 16px;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 10px;
-      background: #fff;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      background: #ffffff;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .activity-item:hover {
+      box-shadow: 0 4px 12px rgba(232, 160, 191, 0.12);
     }
 
     .activity-header-row {
@@ -167,29 +218,35 @@
       align-items: flex-start;
     }
 
-    .activity-info h4 { font-size: 1rem; color: #2d3436; margin-bottom: 3px; }
-    .activity-info p { font-size: 0.85rem; color: #636e72; }
+    .activity-info h4 { font-size: 1rem; color: var(--text-main); font-weight: 600; margin-bottom: 4px; }
+    .activity-info p { font-size: 0.85rem; color: var(--text-muted); }
 
     .activity-actions {
       display: flex;
-      gap: 6px;
-      margin-top: 4px;
+      gap: 8px;
+      margin-top: 6px;
       align-items: center;
       flex-wrap: wrap;
     }
 
-    .btn-map { background: #74b9ff; color: white; padding: 4px 8px; font-size: 0.75rem; }
-    .btn-edit { background: #ffeaa7; color: #d63031; padding: 4px 8px; font-size: 0.75rem; }
-    .btn-delete { background: #ff7675; color: white; padding: 4px 8px; font-size: 0.75rem; }
+    .btn-map { background: var(--secondary); color: var(--text-main); padding: 6px 12px; font-size: 0.8rem; }
+    .btn-map:hover { background: var(--primary); color: white; }
 
-    .activity-cost { font-weight: bold; color: var(--primary); font-size: 0.95rem; }
+    .btn-edit { background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 6px 12px; font-size: 0.8rem; }
+    .btn-edit:hover { background: var(--border); }
+
+    .btn-delete { background: var(--danger); color: white; padding: 6px 12px; font-size: 0.8rem; }
+    .btn-delete:hover { opacity: 0.9; }
+
+    .activity-cost { font-weight: 700; color: var(--primary-hover); font-size: 1rem; }
 
     /* Modal for Editing */
     .modal {
       display: none;
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
+      background: rgba(74, 62, 61, 0.4);
+      backdrop-filter: blur(4px);
       justify-content: center;
       align-items: center;
       z-index: 1000;
@@ -197,10 +254,12 @@
 
     .modal-content {
       background: white;
-      padding: 20px;
-      border-radius: 10px;
+      padding: 24px;
+      border-radius: 20px;
       width: 90%;
-      max-width: 450px;
+      max-width: 460px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      border: 1px solid var(--border);
     }
   </style>
 </head>
@@ -249,7 +308,7 @@
           <span>🗺️ Mapa de Bogotá</span>
         </div>
         <div id="map"></div>
-        <p style="font-size: 0.8rem; color: #636e72;">Haz clic en <b>"📍 Ver en mapa"</b> en cualquier actividad para enfocar su ubicación.</p>
+        <p style="font-size: 0.8rem; color: #636e72;">Haz clic en <b>"Ver en mapa"</b> en cualquier actividad para enfocar su ubicación.</p>
       </div>
 
       <!-- Formulario para agregar -->
@@ -288,7 +347,7 @@
   <!-- Modal para Editar Actividad -->
   <div class="modal" id="editModal">
     <div class="modal-content">
-      <div class="section-title">✏️ Editar Actividad</div>
+      <div class="section-title">Editar Actividad</div>
       <form id="editForm">
         <input type="hidden" id="editId">
         <label>Nombre de la actividad</label>
@@ -412,7 +471,7 @@
         if (act.lat && act.lng) {
           const marker = L.marker([act.lat, act.lng])
             .addTo(map)
-            .bindPopup(`<b>${act.name}</b><br>📍 ${act.location}<br>⏰ ${act.time}`);
+            .bindPopup(`<b>${act.name}</b><br> ${act.location}<br> ${act.time}`);
           markers.push(marker);
         }
       });
@@ -422,7 +481,7 @@
       for (const date in grouped) {
         const dayDiv = document.createElement('div');
         dayDiv.className = 'day-group';
-        dayDiv.innerHTML = `<div class="day-header">📅 ${date}</div>`;
+        dayDiv.innerHTML = `<div class="day-header"> ${date}</div>`;
 
         grouped[date].forEach(act => {
           totalSpent += Number(act.cost);
@@ -432,14 +491,14 @@
             <div class="activity-header-row">
               <div class="activity-info">
                 <h4>${act.name}</h4>
-                <p>⏰ ${act.time} | 📍 ${act.location}</p>
+                <p> ${act.time} |  ${act.location}</p>
               </div>
               <span class="activity-cost">${Number(act.cost).toLocaleString()} DOP</span>
             </div>
             <div class="activity-actions">
-              <button class="btn btn-map" onclick="focusOnMap(${act.lat || 4.628}, ${act.lng || -74.143}, '${act.name}')">📍 Ver en mapa</button>
-              <button class="btn btn-edit" onclick="openEditModal('${act.id}')">✏️ Editar</button>
-              <button class="btn btn-delete" onclick="deleteActivity('${act.id}')">🗑️ Eliminar</button>
+              <button class="btn btn-map" onclick="focusOnMap(${act.lat || 4.628}, ${act.lng || -74.143}, '${act.name}')"> Ver en mapa</button>
+              <button class="btn btn-edit" onclick="openEditModal('${act.id}')">Editar</button>
+              <button class="btn btn-delete" onclick="deleteActivity('${act.id}')">Eliminar</button>
             </div>
           `;
           dayDiv.appendChild(item);
