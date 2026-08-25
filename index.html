@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Itinerario Bogotá 2026 - BTS Tour</title>
+  
+  <!-- Carga de Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --secondary: #a29bfe;
+      --bg: #f8f9fa;
+      --text: #2d3436;
+      --card: #ffffff;
+      --border: #dfe6e9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 20px; }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: var(--primary); margin-bottom: 5px; }
+
+    .status-badge {
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 0.85rem;
+      color: #00b894;
+      font-weight: bold;
+    }
+
+    .budget-tracker {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .budget-card {
+      background: var(--card);
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      border-left: 5px solid var(--primary);
+    }
+
+    .budget-card.remaining { border-left-color: #00b894; }
+    .budget-card.spent { border-left-color: #d63031; }
+
+    .budget-value { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .main-layout { grid-template-columns: 1fr; }
+    }
+
+    .itinerary-section, .form-section {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .day-group { margin-bottom: 20px; }
+    .day-header { 
+      background: var(--secondary); 
+      color: white; 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    .activity-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+
+    .activity-info h4 { margin-bottom: 3px; }
+    .activity-info p { font-size: 0.85rem; color: #636e72; }
+    .activity-cost { font-weight: bold; color: var(--primary); }
+
+    .btn-delete {
+      background: #ff7675;
+      color: white;
+      border: none;
+      padding: 5px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    form label { display: block; margin-top: 10px; font-weight: 600; font-size: 0.9rem; }
+    form input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    
+    .btn-submit:hover { background: #5b4bc4; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Bogotá 2026: BTS & Exploración</h1>
+    <p>Itinerario Colaborativo | 28 Sep - 07 Oct</p>
+  </header>
+
+  <div class="status-badge" id="syncStatus">🟢 Conectado en tiempo real con Firebase</div>
+
+  <!-- Presupuesto -->
+  <div class="budget-tracker">
+    <div class="budget-card">
+      <div>Presupuesto Total</div>
+      <div class="budget-value">30,000 DOP</div>
+      <small>~2,000,000 COP</small>
+    </div>
+    <div class="budget-card spent">
+      <div>Gastado Estimado</div>
+      <div class="budget-value" id="spentBudget">0 DOP</div>
+      <small id="spentCOP">0 COP</small>
+    </div>
+    <div class="budget-card remaining">
+      <div>Restante</div>
+      <div class="budget-value" id="remainingBudget">30,000 DOP</div>
+      <small id="remainingCOP">~2,000,000 COP</small>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <!-- Lista -->
+    <div class="itinerary-section">
+      <h2>Itinerario de Actividades</h2>
+      <div id="itineraryList" style="margin-top: 15px;">Cargando actividades...</div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="form-section">
+      <h3>Añadir Actividad</h3>
+      <form id="activityForm">
+        <label for="actName">Nombre de la actividad</label>
+        <input type="text" id="actName" required placeholder="Ej: Almuerzo corrientazo">
+
+        <label for="actDate">Fecha</label>
+        <input type="date" id="actDate" min="2026-09-28" max="2026-10-07" required value="2026-09-28">
+
+        <label for="actTime">Hora</label>
+        <input type="time" id="actTime" required value="12:00">
+
+        <label for="actLocation">Ubicación / Transporte</label>
+        <input type="text" id="actLocation" placeholder="Ej: Estación TransMilenio Marsella">
+
+        <label for="actCost">Costo Estimado (DOP)</label>
+        <input type="number" id="actCost" required placeholder="Costo en DOP" value="0">
+
+        <button type="submit" class="btn-submit">Guardar Actividad</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ REEMPLAZA ESTO CON TUS DATOS DE FIREBASE
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg",
+  authDomain: "bogota-bts-trip.firebaseapp.com",
+  projectId: "bogota-bts-trip",
+  storageBucket: "bogota-bts-trip.firebasestorage.app",
+  messagingSenderId: "180293297181",
+  appId: "1:180293297181:web:2e02eea579b3d0e1f3d2f4",
+  measurementId: "G-EPMPC7PN81"
+    };
+
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const EXCHANGE_RATE = 66.6;
+    const TOTAL_BUDGET_DOP = 30000;
+
+    // Escuchar cambios en TIEMPO REAL desde Firebase
+    db.collection("itinerary").onSnapshot((snapshot) => {
+      const activities = [];
+      snapshot.forEach((doc) => {
+        activities.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Si la base de datos está vacía la primera vez, cargar datos iniciales
+      if (activities.length === 0 && !localStorage.getItem('initialized')) {
+        seedInitialData();
+      } else {
+        renderItinerary(activities);
+      }
+    }, (error) => {
+      console.error("Error al conectar con Firebase:", error);
+      document.getElementById('syncStatus').innerText = '🔴 Error de conexión';
+      document.getElementById('syncStatus').style.color = '#d63031';
+    });
+
+    function renderItinerary(activities) {
+      const container = document.getElementById('itineraryList');
+      container.innerHTML = '';
+      const grouped = {};
+      
+      // Ordenar por fecha y hora
+      activities.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+      
+      activities.forEach(act => {
+        if (!grouped[act.date]) grouped[act.date] = [];
+        grouped[act.date].push(act);
+      });
+
+      let totalSpent = 0;
+
+      for (const date in grouped) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'day-group';
+        dayDiv.innerHTML = `<div class="day-header">${date}</div>`;
+
+        grouped[date].forEach(act => {
+          totalSpent += Number(act.cost);
+          const item = document.createElement('div');
+          item.className = 'activity-item';
+          item.innerHTML = `
+            <div class="activity-info">
+              <h4>${act.name}</h4>
+              <p>⏰ ${act.time} | 📍 ${act.location}</p>
+            </div>
+            <div style="display:flex; align-items:center;">
+              <span class="activity-cost">${Number(act.cost).toLocaleString()} DOP</span>
+              <button class="btn-delete" onclick="deleteActivity('${act.id}')">✕</button>
+            </div>
+          `;
+          dayDiv.appendChild(item);
+        });
+        container.appendChild(dayDiv);
+      }
+
+      // Actualizar Presupuesto
+      const remaining = TOTAL_BUDGET_DOP - totalSpent;
+      document.getElementById('spentBudget').innerText = `${totalSpent.toLocaleString()} DOP`;
+      document.getElementById('spentCOP').innerText = `~${Math.round(totalSpent * EXCHANGE_RATE).toLocaleString()} COP`;
+      document.getElementById('remainingBudget').innerText = `${remaining.toLocaleString()} DOP`;
+      document.getElementById('remainingCOP').innerText = `~${Math.round(remaining * EXCHANGE_RATE).toLocaleString()} COP`;
+    }
+
+    // Agregar Actividad a Firebase
+    document.getElementById('activityForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newAct = {
+        name: document.getElementById('actName').value,
+        date: document.getElementById('actDate').value,
+        time: document.getElementById('actTime').value,
+        location: document.getElementById('actLocation').value,
+        cost: Number(document.getElementById('actCost').value)
+      };
+
+      try {
+        await db.collection("itinerary").add(newAct);
+        document.getElementById('activityForm').reset();
+      } catch (err) {
+        alert("Error al guardar en Firebase: " + err.message);
+      }
+    });
+
+    // Eliminar Actividad
+    async function deleteActivity(id) {
+      try {
+        await db.collection("itinerary").doc(id).delete();
+      } catch (err) {
+        alert("Error al eliminar: " + err.message);
+      }
+    }
+
+    // Cargar itinerario base la primera vez
+    async function seedInitialData() {
+      localStorage.setItem('initialized', 'true');
+      const defaults = [
+        { date: '2026-09-28', time: '10:00', name: 'Llegada y Mercado en D1/Éxito', location: 'Kennedy - Cra 69b', cost: 1500 },
+        { date: '2026-09-29', time: '14:00', name: 'La Candelaria y Plaza de Bolívar', location: 'Centro Histórico', cost: 800 },
+        { date: '2026-10-02', time: '12:00', name: 'CONCIERTO BTS (Salida Temprana)', location: 'Lugar del Concierto', cost: 2000 }
+      ];
+      for (const item of defaults) {
+        await db.collection("itinerary").add(item);
+      }
+    }
+  </script>
+</body>
+</html>
