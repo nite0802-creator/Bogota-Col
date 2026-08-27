@@ -261,6 +261,36 @@
       box-shadow: 0 20px 40px rgba(0,0,0,0.1);
       border: 1px solid var(--border);
     }
+
+    .itinerary-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  border-color: var(--primary);
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
   </style>
 </head>
 <body>
@@ -290,7 +320,14 @@
       <small id="remainingCOP">~2,000,000 COP</small>
     </div>
   </div>
-
+  
+<!-- Selector de Itinerario / Módulos -->
+<div class="itinerary-tabs">
+  <button class="tab-btn active" onclick="switchTab('general')">Grupo General (28 Sep - 02 Oct)</button>
+  <button class="tab-btn" onclick="switchTab('amigas_medellin')">Lissa, Anabell y Adri Medellín (03 - 07 Oct)</button>
+  <button class="tab-btn" onclick="switchTab('mama_bogota')">Merilyn y Alexandra Bogotá (03 - 07 Oct)</button>
+</div>
+  
   <div class="main-layout">
     <!-- Columna Izquierda: Lista de Actividades -->
     <div class="itinerary-section">
@@ -380,237 +417,243 @@
   </div>
 
   <script>
-    // ⚠️ CONFIGURACIÓN DE FIREBASE
-    const firebaseConfig = {
-      apiKey: "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg",
-      authDomain: "bogota-bts-trip.firebaseapp.com",
-      projectId: "bogota-bts-trip",
-      storageBucket: "bogota-bts-trip.firebasestorage.app",
-      messagingSenderId: "180293297181",
-      appId: "1:180293297181:web:2e02eea579b3d0e1f3d2f4",
-      measurementId: "G-EPMPC7PN81"
+  const firebaseConfig = {
+    apiKey: "AIzaSyAwrwhwqG11U6_Img-183JirFWjW7Betvg",
+    authDomain: "bogota-bts-trip.firebaseapp.com",
+    projectId: "bogota-bts-trip",
+    storageBucket: "bogota-bts-trip.firebasestorage.app",
+    messagingSenderId: "180293297181",
+    appId: "1:180293297181:web:2e02eea579b3d0e1f3d2f4",
+    measurementId: "G-EPMPC7PN81"
+  };
+
+  const map = L.map('map').setView([4.628, -74.143], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  let markers = [];
+  let currentActivities = [];
+  let currentTab = 'general'; // Tab por defecto
+
+  let db = null;
+  let isFirebaseActive = false;
+
+  try {
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY") {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      isFirebaseActive = true;
+    }
+  } catch(e) {
+    console.warn("Error en Firebase, usando LocalStorage:", e);
+  }
+
+  const EXCHANGE_RATE = 66.6;
+  const TOTAL_BUDGET_DOP = 30000;
+
+  // Escuchar cambios de Firebase
+  if (isFirebaseActive && db) {
+    document.getElementById('syncStatus').innerText = '🟢 Conectado con Firebase & Mapa en Vivo';
+    document.getElementById('syncStatus').style.color = 'var(--success)';
+
+    db.collection("itinerary").onSnapshot((snapshot) => {
+      const activities = [];
+      snapshot.forEach((doc) => {
+        activities.push({ id: doc.id, ...doc.data() });
+      });
+      currentActivities = activities;
+      renderItinerary();
+    });
+  } else {
+    document.getElementById('syncStatus').innerText = '🟡 Modo Local activo.';
+    document.getElementById('syncStatus').style.color = '#e17055';
+    loadLocalData();
+  }
+
+  function loadLocalData() {
+    const stored = localStorage.getItem('bogota_activities');
+    if (stored) {
+      currentActivities = JSON.parse(stored);
+    } else {
+      currentActivities = [
+        { id: '1', module: 'general', date: '2026-09-28', time: '10:00', name: 'Llegada a Kennedy & Mercado', location: 'Kennedy, Bogotá', cost: 1500, lat: 4.628, lng: -74.143 },
+        { id: '2', module: 'general', date: '2026-10-02', time: '12:00', name: 'CONCIERTO BTS', location: 'El Campín / Movistar Arena', cost: 2000, lat: 4.646, lng: -74.077 },
+        { id: '3', module: 'amigas_medellin', date: '2026-10-03', time: '08:00', name: 'Vuelo a Medellín & Comuna 13', location: 'Medellín', cost: 3500, lat: 6.244, lng: -75.581 },
+        { id: '4', module: 'mama_bogota', date: '2026-10-04', time: '10:00', name: 'Subida a Monserrate con Mamá', location: 'Monserrate, Bogotá', cost: 1200, lat: 4.605, lng: -74.055 }
+      ];
+      saveLocalData();
+    }
+    renderItinerary();
+  }
+
+  function saveLocalData() {
+    localStorage.setItem('bogota_activities', JSON.stringify(currentActivities));
+  }
+
+  // Cambio de pestañas
+  function switchTab(tabName) {
+    currentTab = tabName;
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    renderItinerary();
+  }
+
+  function renderItinerary() {
+    const container = document.getElementById('itineraryList');
+    container.innerHTML = '';
+    
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    // Filtrar actividades según la pestaña seleccionada (si no tiene módulo asignado, se asigna 'general')
+    const filtered = currentActivities.filter(a => (a.module || 'general') === currentTab);
+    filtered.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+    const grouped = {};
+    filtered.forEach(act => {
+      if (!grouped[act.date]) grouped[act.date] = [];
+      grouped[act.date].push(act);
+
+      if (act.lat && act.lng) {
+        const marker = L.marker([act.lat, act.lng])
+          .addTo(map)
+          .bindPopup(`<b>${act.name}</b><br>📍 ${act.location}<br>⏰ ${act.time}`);
+        markers.push(marker);
+      }
+    });
+
+    // Ajustar el mapa si hay marcadores en el módulo actual
+    if (markers.length > 0) {
+      const group = new L.featureGroup(markers);
+      map.fitBounds(group.getBounds().pad(0.2));
+    }
+
+    let totalSpent = 0;
+
+    for (const date in grouped) {
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'day-group';
+      dayDiv.innerHTML = `<div class="day-header">📅 ${date}</div>`;
+
+      grouped[date].forEach(act => {
+        totalSpent += Number(act.cost);
+        const item = document.createElement('div');
+        item.className = 'activity-item';
+        item.innerHTML = `
+          <div class="activity-header-row">
+            <div class="activity-info">
+              <h4>${act.name}</h4>
+              <p>⏰ ${act.time} | 📍 ${act.location}</p>
+            </div>
+            <span class="activity-cost">${Number(act.cost).toLocaleString()} DOP</span>
+          </div>
+          <div class="activity-actions">
+            <button class="btn btn-map" onclick="focusOnMap(${act.lat || 4.628}, ${act.lng || -74.143})">📍 Ver en mapa</button>
+            <button class="btn btn-edit" onclick="openEditModal('${act.id}')">✏️ Editar</button>
+            <button class="btn btn-delete" onclick="deleteActivity('${act.id}')">🗑️ Eliminar</button>
+          </div>
+        `;
+        dayDiv.appendChild(item);
+      });
+      container.appendChild(dayDiv);
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<p style="color:#888; text-align:center; padding: 20px;">No hay actividades registradas para este módulo.</p>';
+    }
+
+    // Presupuesto del módulo seleccionado
+    const remaining = TOTAL_BUDGET_DOP - totalSpent;
+    document.getElementById('spentBudget').innerText = `${totalSpent.toLocaleString()} DOP`;
+    document.getElementById('spentCOP').innerText = `~${Math.round(totalSpent * EXCHANGE_RATE).toLocaleString()} COP`;
+    document.getElementById('remainingBudget').innerText = `${remaining.toLocaleString()} DOP`;
+    document.getElementById('remainingCOP').innerText = `~${Math.round(remaining * EXCHANGE_RATE).toLocaleString()} COP`;
+  }
+
+  function focusOnMap(lat, lng) {
+    map.flyTo([lat, lng], 14, { duration: 1.5 });
+  }
+
+  // Guardar nueva actividad asignándola al módulo activo
+  document.getElementById('activityForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newAct = {
+      module: currentTab, // Asigna la pestaña donde estás parada
+      name: document.getElementById('actName').value,
+      date: document.getElementById('actDate').value,
+      time: document.getElementById('actTime').value,
+      location: document.getElementById('actLocation').value,
+      cost: Number(document.getElementById('actCost').value),
+      lat: parseFloat(document.getElementById('actLat').value) || 4.628,
+      lng: parseFloat(document.getElementById('actLng').value) || -74.143
     };
 
-    // Configuración inicial de Leaflet Map
-    const map = L.map('map').setView([4.628, -74.143], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    let markers = [];
-    let currentActivities = [];
-
-    // Inicializar Firebase
-    let db = null;
-    let isFirebaseActive = false;
-
-    try {
-      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY") {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        isFirebaseActive = true;
-      }
-    } catch(e) {
-      console.warn("Error al inicializar Firebase, usando LocalStorage:", e);
-    }
-
-    const EXCHANGE_RATE = 66.6;
-    const TOTAL_BUDGET_DOP = 30000;
-
-    // Cargar Actividades (Firebase o LocalStorage)
     if (isFirebaseActive && db) {
-      document.getElementById('syncStatus').innerText = '🟢 Conectado con Firebase & Mapa en Vivo';
-      document.getElementById('syncStatus').style.color = 'var(--success)';
-
-      db.collection("itinerary").onSnapshot((snapshot) => {
-        const activities = [];
-        snapshot.forEach((doc) => {
-          activities.push({ id: doc.id, ...doc.data() });
-        });
-        if (activities.length === 0 && !localStorage.getItem('initialized')) {
-          seedInitialData();
-        } else {
-          currentActivities = activities;
-          renderItinerary(activities);
-        }
-      });
+      await db.collection("itinerary").add(newAct);
     } else {
-      document.getElementById('syncStatus').innerText = '🟡 Modo Local (Sin clave Firebase). Edita index.html para conectar.';
-      document.getElementById('syncStatus').style.color = '#e17055';
-      loadLocalData();
+      newAct.id = Date.now().toString();
+      currentActivities.push(newAct);
+      saveLocalData();
+      renderItinerary();
     }
+    document.getElementById('activityForm').reset();
+  });
 
-    function loadLocalData() {
-      const stored = localStorage.getItem('bogota_activities');
-      if (stored) {
-        currentActivities = JSON.parse(stored);
-      } else {
-        currentActivities = [
-          { id: '1', date: '2026-09-28', time: '10:00', name: 'Llegada a Kennedy & Mercado Abastecimiento', location: 'Cra 69b #12-70, Kennedy', cost: 1500, lat: 4.628, lng: -74.143 },
-          { id: '2', date: '2026-09-29', time: '14:00', name: 'Paseo La Candelaria & Plaza Bolívar', location: 'La Candelaria, Bogotá', cost: 800, lat: 4.598, lng: -74.076 },
-          { id: '3', date: '2026-10-02', time: '12:00', name: 'CONCIERTO BTS (Estadio El Campín / Arena)', location: 'Movistar Arena / El Campín', cost: 2000, lat: 4.646, lng: -74.077 },
-          { id: '4', date: '2026-10-04', time: '10:00', name: 'Subida a Monserrate', location: 'Cerro de Monserrate', cost: 900, lat: 4.605, lng: -74.055 }
-        ];
+  // Modal y funciones de eliminación / edición
+  function openEditModal(id) {
+    const act = currentActivities.find(a => a.id === id);
+    if (!act) return;
+    document.getElementById('editId').value = act.id;
+    document.getElementById('editName').value = act.name;
+    document.getElementById('editDate').value = act.date;
+    document.getElementById('editTime').value = act.time;
+    document.getElementById('editLocation').value = act.location;
+    document.getElementById('editCost').value = act.cost;
+    document.getElementById('editLat').value = act.lat || 4.628;
+    document.getElementById('editLng').value = act.lng || -74.143;
+    document.getElementById('editModal').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+  }
+
+  document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editId').value;
+    const updated = {
+      name: document.getElementById('editName').value,
+      date: document.getElementById('editDate').value,
+      time: document.getElementById('editTime').value,
+      location: document.getElementById('editLocation').value,
+      cost: Number(document.getElementById('editCost').value),
+      lat: parseFloat(document.getElementById('editLat').value) || 4.628,
+      lng: parseFloat(document.getElementById('editLng').value) || -74.143
+    };
+
+    if (isFirebaseActive && db) {
+      await db.collection("itinerary").doc(id).update(updated);
+    } else {
+      const index = currentActivities.findIndex(a => a.id === id);
+      if (index !== -1) {
+        currentActivities[index] = { ...currentActivities[index], ...updated };
         saveLocalData();
-      }
-      renderItinerary(currentActivities);
-    }
-
-    function saveLocalData() {
-      localStorage.setItem('bogota_activities', JSON.stringify(currentActivities));
-    }
-
-    function renderItinerary(activities) {
-      const container = document.getElementById('itineraryList');
-      container.innerHTML = '';
-      
-      markers.forEach(m => map.removeLayer(m));
-      markers = [];
-
-      const grouped = {};
-      activities.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-
-      activities.forEach(act => {
-        if (!grouped[act.date]) grouped[act.date] = [];
-        grouped[act.date].push(act);
-
-        if (act.lat && act.lng) {
-          const marker = L.marker([act.lat, act.lng])
-            .addTo(map)
-            .bindPopup(`<b>${act.name}</b><br>${act.location}<br>${act.time}`);
-          markers.push(marker);
-        }
-      });
-
-      let totalSpent = 0;
-
-      for (const date in grouped) {
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'day-group';
-        dayDiv.innerHTML = `<div class="day-header">${date}</div>`;
-
-        grouped[date].forEach(act => {
-          totalSpent += Number(act.cost);
-          const item = document.createElement('div');
-          item.className = 'activity-item';
-          item.innerHTML = `
-            <div class="activity-header-row">
-              <div class="activity-info">
-                <h4>${act.name}</h4>
-                <p>⏰ ${act.time} | 📍 ${act.location}</p>
-              </div>
-              <span class="activity-cost">${Number(act.cost).toLocaleString()} DOP</span>
-            </div>
-            <div class="activity-actions">
-              <button class="btn btn-map" onclick="focusOnMap(${act.lat || 4.628}, ${act.lng || -74.143}, '${act.name}')">Ver en mapa</button>
-              <button class="btn btn-edit" onclick="openEditModal('${act.id}')">Editar</button>
-              <button class="btn btn-delete" onclick="deleteActivity('${act.id}')">Eliminar</button>
-            </div>
-          `;
-          dayDiv.appendChild(item);
-        });
-        container.appendChild(dayDiv);
-      }
-
-      const remaining = TOTAL_BUDGET_DOP - totalSpent;
-      document.getElementById('spentBudget').innerText = `${totalSpent.toLocaleString()} DOP`;
-      document.getElementById('spentCOP').innerText = `~${Math.round(totalSpent * EXCHANGE_RATE).toLocaleString()} COP`;
-      document.getElementById('remainingBudget').innerText = `${remaining.toLocaleString()} DOP`;
-      document.getElementById('remainingCOP').innerText = `~${Math.round(remaining * EXCHANGE_RATE).toLocaleString()} COP`;
-    }
-
-    function focusOnMap(lat, lng, name) {
-      map.flyTo([lat, lng], 15, { duration: 1.5 });
-    }
-
-    function openEditModal(id) {
-      const act = currentActivities.find(a => a.id === id);
-      if (!act) return;
-      document.getElementById('editId').value = act.id;
-      document.getElementById('editName').value = act.name;
-      document.getElementById('editDate').value = act.date;
-      document.getElementById('editTime').value = act.time;
-      document.getElementById('editLocation').value = act.location;
-      document.getElementById('editCost').value = act.cost;
-      document.getElementById('editLat').value = act.lat || 4.628;
-      document.getElementById('editLng').value = act.lng || -74.143;
-      document.getElementById('editModal').style.display = 'flex';
-    }
-
-    function closeEditModal() {
-      document.getElementById('editModal').style.display = 'none';
-    }
-
-    document.getElementById('editForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('editId').value;
-      const updated = {
-        name: document.getElementById('editName').value,
-        date: document.getElementById('editDate').value,
-        time: document.getElementById('editTime').value,
-        location: document.getElementById('editLocation').value,
-        cost: Number(document.getElementById('editCost').value),
-        lat: parseFloat(document.getElementById('editLat').value) || 4.628,
-        lng: parseFloat(document.getElementById('editLng').value) || -74.143
-      };
-
-      if (isFirebaseActive && db) {
-        await db.collection("itinerary").doc(id).update(updated);
-      } else {
-        const index = currentActivities.findIndex(a => a.id === id);
-        if (index !== -1) {
-          currentActivities[index] = { id, ...updated };
-          saveLocalData();
-          renderItinerary(currentActivities);
-        }
-      }
-      closeEditModal();
-    });
-
-    document.getElementById('activityForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const newAct = {
-        name: document.getElementById('actName').value,
-        date: document.getElementById('actDate').value,
-        time: document.getElementById('actTime').value,
-        location: document.getElementById('actLocation').value,
-        cost: Number(document.getElementById('actCost').value),
-        lat: parseFloat(document.getElementById('actLat').value) || 4.628,
-        lng: parseFloat(document.getElementById('actLng').value) || -74.143
-      };
-
-      if (isFirebaseActive && db) {
-        await db.collection("itinerary").add(newAct);
-      } else {
-        newAct.id = Date.now().toString();
-        currentActivities.push(newAct);
-        saveLocalData();
-        renderItinerary(currentActivities);
-      }
-      document.getElementById('activityForm').reset();
-    });
-
-    async function deleteActivity(id) {
-      if (isFirebaseActive && db) {
-        await db.collection("itinerary").doc(id).delete();
-      } else {
-        currentActivities = currentActivities.filter(a => a.id !== id);
-        saveLocalData();
-        renderItinerary(currentActivities);
+        renderItinerary();
       }
     }
+    closeEditModal();
+  });
 
-    async function seedInitialData() {
-      localStorage.setItem('initialized', 'true');
-      const defaults = [
-        { date: '2026-09-28', time: '10:00', name: 'Llegada a Kennedy & Mercado Abastecimiento', location: 'Cra 69b #12-70, Kennedy', cost: 1500, lat: 4.628, lng: -74.143 },
-        { date: '2026-09-29', time: '14:00', name: 'Paseo La Candelaria & Plaza Bolívar', location: 'La Candelaria, Bogotá', cost: 800, lat: 4.598, lng: -74.076 },
-        { date: '2026-10-02', time: '12:00', name: 'CONCIERTO BTS (Estadio El Campín / Arena)', location: 'Movistar Arena / El Campín', cost: 2000, lat: 4.646, lng: -74.077 }
-      ];
-      for (const item of defaults) {
-        await db.collection("itinerary").add(item);
-      }
+  async function deleteActivity(id) {
+    if (isFirebaseActive && db) {
+      await db.collection("itinerary").doc(id).delete();
+    } else {
+      currentActivities = currentActivities.filter(a => a.id !== id);
+      saveLocalData();
+      renderItinerary();
     }
-  </script>
+  }
+</script>
 </body>
 </html>
